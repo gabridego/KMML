@@ -59,7 +59,7 @@ class KernelRidgeClassifier(BaseEstimator):
             if self.verbose:
                 print(f"Start computing prediction for sample {i}...")
                 start = time.time()
-            preds.append(np.argmax([np.sum([alpha * similarity for a in alpha]) for alpha in self.alpha]))
+            preds.append(np.argmax([np.dot(alpha, similarity) for alpha in self.alpha]))
             if self.verbose:
                 end = time.time()
                 print(f"Prediction for sample {i} computed in {end - start:.2f} seconds")
