@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument('--model', type=str, choices=['krr'], help="ML model to use")
     parser.add_argument('--c', type=float, default=1.0, help="regularization parameter")
     parser.add_argument('--kernel', type=str, choices=['linear', 'rbf'], help="kernel function")
-    parser.add_argument('--sigma', type=float, default=10, help="sigma coefficient for rbf kernel")
+    parser.add_argument('--gamma', type=float, default=10, help="gamma coefficient for rbf kernel")
     parser.add_argument('-v', '--verbose', default=False, action='store_true',
                         help='print messages')
     parser.add_argument('--use-cv', default=False, action='store_true', help="cross validation")

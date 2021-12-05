@@ -7,10 +7,10 @@ from kernels import *
 
 class KernelRidgeClassifier(BaseEstimator):
 
-    def __init__(self, C=1.0, kernel='rbf', sigma=10, verbose=False):
+    def __init__(self, C=1.0, kernel='rbf', gamma=10, verbose=False):
         self.C = C
         self.kernel = kernel
-        self.sigma = sigma
+        self.gamma = gamma
         self.verbose = verbose
         self.K = None
         self.alpha = None
@@ -19,7 +19,7 @@ class KernelRidgeClassifier(BaseEstimator):
         # map labels in {-1, 1}
         Y = LabelBinarizer(pos_label=1, neg_label=-1).fit_transform(y)
         # initialize kernel
-        self.K = kernels[self.kernel](X, self.sigma)
+        self.K = kernels[self.kernel](X, self.gamma)
         if self.verbose:
             print("Start computing kernel similarity matrix...")
             start = time.time()
