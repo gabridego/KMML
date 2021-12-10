@@ -1,8 +1,14 @@
 import argparse
 import numpy as np
 import pandas as pd
+from sklearn.datasets import make_regression, make_classification
+from sklearn.kernel_ridge import KernelRidge
+from sklearn.linear_model import RidgeClassifier
+from sklearn.metrics import mean_squared_error, accuracy_score
 
 from sklearn.model_selection import StratifiedKFold, GridSearchCV, ParameterGrid
+
+from models import KernelRidgeRegressor, KernelRidgeClassifier
 
 
 def parse_args():
@@ -37,4 +43,35 @@ def train():
 
 
 if __name__ == '__main__':
-    pass
+    X, y = make_regression(1000, n_features=500)
+
+    reg1 = KernelRidgeRegressor(0.01/len(X), kernel='rbf', gamma=1)
+    reg1.fit(X, y)
+    print(reg1.K.similarity_matrix())
+    print(reg1.alpha)
+    y_pred1 = reg1.predict(X)
+
+    reg2 = KernelRidge(0.01, kernel='rbf', gamma=1)
+    reg2.fit(X, y)
+    y_pred2 = reg2.predict(X)
+
+    print(mean_squared_error(y, y_pred1))
+    print(mean_squared_error(y, y_pred2))
+
+    # X, y = make_classification(1000, 100, n_informative=10, n_classes=10)
+    # X_train, y_train = X[:800], y[:800]
+    # X_test, y_test = X[800:], y[800:]
+    #
+    # clf1 = KernelRidgeClassifier(0.01/len(X_train), kernel='linear')
+    # clf1.fit(X_train, y_train)
+    # y_pred1 = clf1.predict(X_test)
+    #
+    # clf2 = RidgeClassifier(0.01, fit_intercept=False)
+    # clf2.fit(X_train, y_train)
+    # y_pred2 = clf2.predict(X_test)
+    #
+    # print(accuracy_score(y_test, y_pred1))
+    # print(accuracy_score(y_test, y_pred2))
+    #
+    # print(y_pred1)
+    # print(y_pred2)

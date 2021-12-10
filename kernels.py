@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.spatial.distance import pdist, squareform
 
 
 class Kernel:
@@ -31,11 +32,8 @@ class GaussianKernel(Kernel):
         super().__init__(X, gamma)
 
     def similarity_matrix(self):
-        l = len(self.X)
-        K = np.empty([l, l])
-        for i in range(l):
-            for j in range(i, l):
-                K[i, j] = K[j, i] = np.exp(- self.gamma * (np.linalg.norm(self.X[i] - self.X[j]) ** 2))
+        K = squareform(np.exp(- self.gamma * pdist(self.X, 'sqeuclidean')))
+        K += np.eye(K.shape[0])
         return K
 
     def similarity(self, x):
