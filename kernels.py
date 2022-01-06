@@ -28,8 +28,10 @@ class GaussianKernel(Kernel):
         super().__init__(X, gamma)
 
     def similarity_matrix(self):
-        K = squareform(np.exp(- self.gamma * pdist(self.X, 'sqeuclidean')))
-        K += np.eye(K.shape[0])
+        # K = squareform(np.exp(- self.gamma * pdist(self.X, 'sqeuclidean')))
+        # K += np.eye(K.shape[0])
+        X_norm = np.sum(self.X ** 2, axis=-1)
+        K = np.exp(-self.gamma * (X_norm[:, None] + X_norm[None, :] - 2 * np.dot(self.X, self.X.T)))
         return K
 
     def similarity(self, x):

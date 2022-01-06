@@ -1,6 +1,7 @@
 import time
 
 from scipy.linalg import solve
+from scipy.optimize import minimize, LinearConstraint
 from sklearn.base import BaseEstimator
 from sklearn.preprocessing import LabelBinarizer
 from tqdm import tqdm
@@ -44,11 +45,10 @@ class KernelRidgeRegressor(BaseEstimator):
 
 class KernelRidgeClassifier(BaseEstimator):
 
-    def __init__(self, C=1.0, kernel='rbf', gamma=10, verbose=False):
+    def __init__(self, C=1.0, kernel='rbf', gamma=10):
         self.C = C
         self.kernel = kernel
         self.gamma = gamma
-        self.verbose = verbose
         self.K = None
         self.alpha = None
 
@@ -71,6 +71,48 @@ class KernelRidgeClassifier(BaseEstimator):
         self.alpha = []
         for c in tqdm(sorted(set(y))):
             self.alpha.append(solve(K, Y[:, c], assume_a='pos'))
+        self.alpha = np.array(self.alpha)
+        return self
+
+    def predict(self, X):
+        print("Predicting...")
+        preds = []
+        for x in tqdm(X):
+            similarity = self.K.similarity(x)
+            preds.append(np.argmax([np.dot(alpha, similarity) for alpha in self.alpha]))
+        return np.array(preds)
+
+
+class KernelSVC(BaseEstimator):
+
+    def __init__(self, C=1.0, kernel='rbf', gamma=10):
+        self.C = C
+        self.kernel = kernel
+        self.gamma = gamma
+        self.K = None
+        self.alpha = None
+
+    def fit(self, X, y):
+        n = len(X)
+        ub = 1 / (2 * self.C * n)
+        # map labels in {-1, 1}
+        Y = LabelBinarizer(pos_label=1, neg_label=-1).fit_transform(y)
+        # initialize kernel
+        self.K = kernels[self.kernel](X, self.gamma)
+        print("Start computing kernel similarity matrix...")
+        start = time.time()
+        K = self.K.similarity_matrix()
+        end = time.time()
+        print(f"Kernel similarity matrix computed in {end - start:.2f} seconds")
+
+        self.alpha = []
+        for c in tqdm(sorted(set(y))):
+            y_c = Y[:, c]
+            optresults = minimize(lambda a: (a @ K) @ a - 2 * (a @ y_c),
+                                  x0=np.zeros(n),
+                                  method='trust-constr',
+                                  constraints=[LinearConstraint(np.diag(y_c), 0, ub)])
+            self.alpha.append(optresults.x)
         self.alpha = np.array(self.alpha)
         return self
 
