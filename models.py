@@ -1,12 +1,14 @@
 import time
 
+import cvxopt
 from scipy.linalg import solve
-from scipy.optimize import minimize, LinearConstraint
 from sklearn.base import BaseEstimator
 from sklearn.preprocessing import LabelBinarizer
 from tqdm import tqdm
 
 from kernels import *
+
+cvxopt.solvers.options['show_progress'] = False
 
 
 class KernelRidgeRegressor(BaseEstimator):
@@ -84,6 +86,9 @@ class KernelRidgeClassifier(BaseEstimator):
 
 
 class KernelSVC(BaseEstimator):
+    """
+    $$\min_{\alpha}\frac{1}{2}\alpha^Ty^TKy\alpha - \sum_i\alpha_i\ s.t.\ \alpha^Ty = 0,\ 0 \leq \alpha_i \leq C$$
+    """
 
     def __init__(self, C=1.0, kernel='rbf', gamma=10):
         self.C = C
@@ -94,7 +99,6 @@ class KernelSVC(BaseEstimator):
 
     def fit(self, X, y):
         n = len(X)
-        ub = 1 / (2 * self.C * n)
         # map labels in {-1, 1}
         Y = LabelBinarizer(pos_label=1, neg_label=-1).fit_transform(y)
         # initialize kernel
@@ -105,14 +109,22 @@ class KernelSVC(BaseEstimator):
         end = time.time()
         print(f"Kernel similarity matrix computed in {end - start:.2f} seconds")
 
+        # class-independent factors
+        q = cvxopt.matrix(np.ones(n) * -1)
+        b = cvxopt.matrix(0.0)
+        G_low = np.eye(n) * -1
+        G_up = np.eye(n)
+        G = cvxopt.matrix(np.vstack((G_low, G_up)))
+        h_low = np.zeros(n)
+        h_up = np.ones(n) * self.C
+        h = cvxopt.matrix(np.hstack((h_low, h_up)))
+        # compute coefficients for each class, one-vs-all
         self.alpha = []
         for c in tqdm(sorted(set(y))):
-            y_c = Y[:, c]
-            optresults = minimize(lambda a: (a @ K) @ a - 2 * (a @ y_c),
-                                  x0=np.zeros(n),
-                                  method='trust-constr',
-                                  constraints=[LinearConstraint(np.diag(y_c), 0, ub)])
-            self.alpha.append(optresults.x)
+            P = cvxopt.matrix(np.outer(Y[:, c], Y[:, c]) * K)
+            A = cvxopt.matrix(Y[:, c], (1, n), tc='d')
+            result = cvxopt.solvers.qp(P, q, G, h, A, b)
+            self.alpha.append(np.ravel(result['x']) * Y[:, c])
         self.alpha = np.array(self.alpha)
         return self
 
