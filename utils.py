@@ -1,3 +1,5 @@
+from random import sample, shuffle
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -29,18 +31,18 @@ class StandardScaler:
     def fit_transform(self, X, y=None):
         self.fit(X, y)
         return self.transform(X)
-    
-    
+
+
 class HOGExtractor:
-    
+
     def __init__(self, orientations=8, pixels_per_cell=(8, 8), cells_per_block=(2, 2)):
         self.orientations = orientations
         self.pixels_per_cell = pixels_per_cell
         self.cells_per_block = cells_per_block
-    
+
     def fit(self, X, y=None):
         pass
-    
+
     def transform(self, X):
         new_X = []
         for x in X:
@@ -49,20 +51,20 @@ class HOGExtractor:
             b = x[2048:].reshape([32, 32])
             tensor = np.dstack((r, g, b))
             new_X.append(hog(tensor, orientations=self.orientations, pixels_per_cell=self.pixels_per_cell,
-                            cells_per_block=self.cells_per_block, channel_axis=-1))
+                             cells_per_block=self.cells_per_block, channel_axis=-1))
         return np.array(new_X)
-    
+
     def fit_transform(self, X, y=None):
         self.fit(X, y)
         return self.transform(X)
 
 
 class ColorHistogramExtractor:
-    
+
     def __init__(self, bins=(8, 8, 8)):
         self.bins = bins
         self.range = None
-    
+
     def fit(self, X, y=None):
         rs = X[:, :1024]
         r_lim = (np.min(rs), np.max(rs))
@@ -71,7 +73,7 @@ class ColorHistogramExtractor:
         bs = X[:, 2048:]
         b_lim = (np.min(bs), np.max(bs))
         self.range = (r_lim, g_lim, b_lim)
-    
+
     def transform(self, X):
         new_X = []
         for x in X:
@@ -79,14 +81,43 @@ class ColorHistogramExtractor:
             g = x[1024:2048]
             b = x[2048:]
             tensor = np.dstack((r, g, b)).squeeze()
-            
+
             H, _ = np.histogramdd(tensor, bins=self.bins, range=self.range)
             new_X.append(H.reshape(-1))
         return np.array(new_X)
-    
+
     def fit_transform(self, X, y=None):
         self.fit(X, y)
         return self.transform(X)
+
+
+def augment_dataset(X, y, ratio=0.2):
+    augmented_X = []
+    augmented_y = []
+    for c in set(y):
+        indexes = (y == c).nonzero()[0]
+        chosen_indexes = np.random.choice(indexes, int(ratio * len(indexes)), replace=False)
+        X_to_augment = X[chosen_indexes]
+
+        for x in X_to_augment:
+            flip_x = np.array([])
+
+            r = x[:1024].reshape([32, 32])
+            g = x[1024:2048].reshape([32, 32])
+            b = x[2048:].reshape([32, 32])
+            tensor = np.dstack((r, g, b))
+
+            tensor = np.fliplr(tensor)
+
+            for channel in range(3):
+                flip_x = np.append(flip_x, tensor[:, :, channel])
+            augmented_X.append(flip_x)
+            augmented_y.append(c)
+    indexes = np.random.permutation(len(augmented_X))
+    augmented_X = np.array(augmented_X)[indexes]
+    augmented_y = np.array(augmented_y)[indexes]
+
+    return np.append(X, augmented_X, axis=0), np.append(y, augmented_y)
 
 
 def scale(A):

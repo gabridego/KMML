@@ -9,6 +9,7 @@ from sklearn.metrics import mean_squared_error, accuracy_score
 from sklearn.model_selection import StratifiedKFold, GridSearchCV, ParameterGrid
 
 from models import KernelRidgeRegressor, KernelRidgeClassifier
+from utils import *
 
 
 def parse_args():
@@ -43,6 +44,15 @@ def train():
 
 
 if __name__ == '__main__':
+    Xtr = np.array(pd.read_csv('data/Xtr.csv', header=None, sep=',', usecols=range(3072)))
+    Xte = np.array(pd.read_csv('data/Xte.csv', header=None, sep=',', usecols=range(3072)))
+    Ytr = np.array(pd.read_csv('data/Ytr.csv', sep=',', usecols=[1])).squeeze()
+
+    classes = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+
+    X, y = augment_dataset(Xtr, Ytr)
+
+
     X, y = make_regression(1000, n_features=500)
 
     reg1 = KernelRidgeRegressor(0.01/len(X), kernel='rbf', gamma=1)
