@@ -88,18 +88,21 @@ class KernelRidgeClassifier(BaseEstimator):
 
 class AugmentedHogsKernelRidgeClassifier(BaseEstimator):
 
-    def __init__(self, C=1.0, kernel='rbf', gamma=10, **aug_args):
+    def __init__(self, C=1.0, kernel='rbf', gamma=10, flip_ratio=0.2, rot_replicas=1, rot_ratio=0.2, rot_angle=20):
         self.C = C
         self.kernel = kernel
         self.gamma = gamma
-        self.aug_args = aug_args
+        self.flip_ratio = flip_ratio
+        self.rot_replicas = rot_replicas
+        self.rot_ratio = rot_ratio
+        self.rot_angle = rot_angle
         self.hog_extractor = HOGExtractor()
         self.K = None
         self.alpha = None
 
     def fit(self, X, y):
         # augment dataset
-        X, y = augment_dataset(X, y, **self.aug_args)
+        X, y = augment_dataset(X, y, self.flip_ratio, self.rot_replicas, self.rot_ratio, self.rot_angle)
         # get HOGs
         X = self.hog_extractor.transform(X)
         # map labels in {-1, 1}
