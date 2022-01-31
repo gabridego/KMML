@@ -7,6 +7,7 @@ from sklearn.preprocessing import LabelBinarizer
 from tqdm import tqdm
 
 from kernels import *
+from utils import augment_dataset, HOGExtractor
 
 cvxopt.solvers.options['show_progress'] = False
 
@@ -78,6 +79,54 @@ class KernelRidgeClassifier(BaseEstimator):
 
     def predict(self, X):
         print("Predicting...")
+        preds = []
+        for x in tqdm(X):
+            similarity = self.K.similarity(x)
+            preds.append(np.argmax([np.dot(alpha, similarity) for alpha in self.alpha]))
+        return np.array(preds)
+
+
+class AugmentedHogsKernelRidgeClassifier(BaseEstimator):
+
+    def __init__(self, C=1.0, kernel='rbf', gamma=10, **aug_args):
+        self.C = C
+        self.kernel = kernel
+        self.gamma = gamma
+        self.aug_args = aug_args
+        self.hog_extractor = HOGExtractor()
+        self.K = None
+        self.alpha = None
+
+    def fit(self, X, y):
+        # augment dataset
+        X, y = augment_dataset(X, y, **self.aug_args)
+        # get HOGs
+        X = self.hog_extractor.transform(X)
+        # map labels in {-1, 1}
+        Y = LabelBinarizer(pos_label=1, neg_label=-1).fit_transform(y)
+        # initialize kernel
+        self.K = kernels[self.kernel](X, self.gamma)
+        print("Start computing kernel similarity matrix...")
+        start = time.time()
+        K = self.K.similarity_matrix()
+        end = time.time()
+        print(f"Kernel similarity matrix computed in {end - start:.2f} seconds")
+
+        # compute first term
+        diag = np.zeros_like(K)
+        np.fill_diagonal(diag, self.C * len(X))
+        K += diag
+        # compute coefficients for each class, one-vs-all
+        self.alpha = []
+        for c in tqdm(sorted(set(y))):
+            self.alpha.append(solve(K, Y[:, c], assume_a='pos'))
+        self.alpha = np.array(self.alpha)
+        return self
+
+    def predict(self, X):
+        print("Predicting...")
+        # get hogs
+        X = self.hog_extractor.transform(X)
         preds = []
         for x in tqdm(X):
             similarity = self.K.similarity(x)

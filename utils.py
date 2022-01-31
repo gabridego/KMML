@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from skimage.feature import hog
+from scipy.ndimage import rotate
 
 
 class StandardScaler:
@@ -91,12 +92,13 @@ class ColorHistogramExtractor:
         return self.transform(X)
 
 
-def augment_dataset(X, y, ratio=0.2):
+def augment_dataset(X, y, flip_ratio=0.2, rot_replicas=1, rot_ratio=0.2, rot_angle=None):
     augmented_X = []
     augmented_y = []
+    # flip
     for c in set(y):
         indexes = (y == c).nonzero()[0]
-        chosen_indexes = np.random.choice(indexes, int(ratio * len(indexes)), replace=False)
+        chosen_indexes = np.random.choice(indexes, int(flip_ratio * len(indexes)), replace=False)
         X_to_augment = X[chosen_indexes]
 
         for x in X_to_augment:
@@ -113,6 +115,32 @@ def augment_dataset(X, y, ratio=0.2):
                 flip_x = np.append(flip_x, tensor[:, :, channel])
             augmented_X.append(flip_x)
             augmented_y.append(c)
+    # rotate
+    if rot_angle:
+        for _ in range(rot_replicas):
+            for c in set(y):
+                indexes = (y == c).nonzero()[0]
+                chosen_indexes = np.random.choice(indexes, int(rot_ratio * len(indexes)), replace=False)
+                X_to_augment = X[chosen_indexes]
+
+                for x in X_to_augment:
+                    rot_x = np.array([])
+
+                    r = x[:1024].reshape([32, 32])
+                    g = x[1024:2048].reshape([32, 32])
+                    b = x[2048:].reshape([32, 32])
+                    tensor = np.dstack((r, g, b))
+
+                    if np.random.random_sample() >= 0.5:
+                        tensor = np.fliplr(tensor)
+
+                    angle = np.random.randint(-rot_angle, rot_angle)
+                    tensor = rotate(tensor, angle, reshape=False, mode='nearest')
+
+                    for channel in range(3):
+                        rot_x = np.append(rot_x, tensor[:, :, channel])
+                    augmented_X.append(rot_x)
+                    augmented_y.append(c)
     indexes = np.random.permutation(len(augmented_X))
     augmented_X = np.array(augmented_X)[indexes]
     augmented_y = np.array(augmented_y)[indexes]

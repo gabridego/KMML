@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.spatial.distance
 from scipy.spatial.distance import pdist, squareform
 
 
@@ -36,4 +37,32 @@ class GaussianKernel(Kernel):
         return np.array([np.exp(- self.gamma * (np.linalg.norm(x_i - x) ** 2)) for x_i in self.X])
 
 
-kernels = {'linear': LinearKernel, 'rbf': GaussianKernel}
+class LaplacianKernel(Kernel):
+
+    def __init__(self, X, gamma):
+        super().__init__(X, gamma)
+
+    def similarity_matrix(self):
+        K = squareform(np.exp(-self.gamma * pdist(self.X, 'cityblock'))) + np.eye(len(self.X))
+        return K
+
+    def similarity(self, x):
+        return np.array([np.exp(- self.gamma * np.linalg.norm(x_i - x, ord=1)) for x_i in self.X])
+
+
+class ExponentialKernel(Kernel):
+
+    def __init__(self, X, gamma):
+        super().__init__(X, gamma)
+
+    def similarity_matrix(self):
+        K = self.X @ self.X.T
+        K = np.exp(self.gamma * (K - 1))
+        return K
+
+    def similarity(self, x):
+        return np.exp(self.gamma * (x @ self.X.T - 1))
+
+
+kernels = {'linear': LinearKernel, 'rbf': GaussianKernel,
+           'laplacian': LaplacianKernel, 'exp': ExponentialKernel}
